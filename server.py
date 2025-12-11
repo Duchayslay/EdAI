@@ -17,6 +17,7 @@ async def solve(image: UploadFile = File(...)):
             data={"apikey": API_KEY, "language": "eng"}
         ).json()
 
+        print("OCR_DEBUG", ocr_result)
         text = ocr_result["ParsedResults"][0]["ParsedText"]
 
         lines = [l.strip() for l in text.split("\n") if l.strip()]
@@ -36,6 +37,7 @@ async def solve(image: UploadFile = File(...)):
             solution = {"message": "No equations found"}
 
         return {
+            "debug": ocr_result,
             "ocr_text": text,
             "parsed": lines,
             "solution": {str(k): str(v) for k, v in solution.items()},
