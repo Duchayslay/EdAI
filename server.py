@@ -1,6 +1,9 @@
 import re
+from fastapi import FastAPI
 import sympy as sp
 from sympy import Eq
+
+app = FastAPI()
 
 def clean_ocr_lines(text: str):
     text = text.replace("X", "x").replace("Y", "y")
