@@ -6,5 +6,6 @@ sympy
 
 transformers
 torch
-
+supabase
 python-multipart
+pillow
