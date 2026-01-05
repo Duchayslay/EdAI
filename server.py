@@ -158,8 +158,8 @@ async def get_version():
         return {"commit": commit.decode().strip()}
     except Exception as e:
         return {"error": str(e)}
+if __name__ == "__main__":
+    import uvicorn
 
-from server import solve_text
-import asyncio
-
-asyncio.run(solve_text({"text": "x+2=5"}))
+    # Chạy server bình thường
+    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
