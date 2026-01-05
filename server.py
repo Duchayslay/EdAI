@@ -108,7 +108,11 @@ async def solve_text(payload: dict):
 
         step_result = solve_with_steps(eqs)
         problem_type = detect_type(text, eqs)
-        domain = classify_domain(text)
+        try:
+            domain = classify_domain(text)
+        except Exception as e:
+            print("Classifier skipped:", e)
+            domain = "unknown"
 
         result = {
             "domain": domain,
@@ -170,8 +174,3 @@ if __name__ == "__main__":
         reload=False
     )
 
-try:
-    domain = classify_domain(text)
-except Exception as e:
-    print("Classifier skipped:", e)
-    domain = "unknown"
