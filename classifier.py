@@ -45,3 +45,4 @@ else:
         pred = _clf(text, truncation=True, max_length=128)[0]
         label_id = int(pred["label"].split("_")[-1])
         return _label_encoder.inverse_transform([label_id])[0]
+# ===============================
