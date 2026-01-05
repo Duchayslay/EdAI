@@ -157,9 +157,6 @@ async def get_history():
         traceback.print_exc()
         return {"error": "Cannot fetch history", "message": str(e)}
 
-# =====================
-# RUN (optional local)
-# =====================
 if __name__ == "__main__":
     import uvicorn
     import os
@@ -169,5 +166,12 @@ if __name__ == "__main__":
         "server:app",
         host="0.0.0.0",
         port=port,
-        log_level="info"
+        log_level="info",
+        reload=False
     )
+
+
+@app.on_event("startup")
+def startup_event():
+    from classifier import load_resources
+    load_resources()
