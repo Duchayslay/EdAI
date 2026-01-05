@@ -10,6 +10,7 @@ _label_encoder = None
 DISABLE_CLASSIFIER = os.environ.get("DISABLE_CLASSIFIER") == "1"
 
 def load_resources():
+    print(">>> START loading classifier")
     global _clf, _label_encoder
 
     if _clf is not None:
