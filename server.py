@@ -7,6 +7,7 @@ from classifier import classify_domain
 from detector import detect_type
 from supabase import create_client
 from solver.step_solver import solve_with_steps
+import traceback
 
 # =====================
 # INIT
@@ -61,77 +62,85 @@ def clean_ocr_lines(text: str):
         cleaned.append(buffer)
     return cleaned
 
+# =====================
+# POST /solve_text
+# =====================
 @app.post("/api/solve_text")
 async def solve_text(payload: dict):
     raw = payload.get("text", "").strip()
     if not raw:
         return {"error": "Empty text"}
 
-    text = insert_multiplication(normalize_text(raw))
-    lines = clean_ocr_lines(text)
+    try:
+        text = insert_multiplication(normalize_text(raw))
+        lines = clean_ocr_lines(text)
 
-    eqs = []
-    for line in lines:
-        try:
-            l, r = line.split("=", 1)
-            eqs.append(Eq(sp.sympify(l), sp.sympify(r)))
-        except Exception as e:
-            print("Parse error:", line, e)
+        eqs = []
+        parse_errors = []
+        for line in lines:
+            try:
+                l, r = line.split("=", 1)
+                eqs.append(Eq(sp.sympify(l), sp.sympify(r)))
+            except Exception as e:
+                parse_errors.append({"line": line, "error": str(e)})
+                print("Parse error:", line, e)
 
-    if not eqs:
-        return {
-            "error": "Cannot parse",
+        if not eqs:
+            return {
+                "error": "Cannot parse",
+                "ocr_text": raw,
+                "normalized": text,
+                "parsed": lines,
+                "parse_errors": parse_errors
+            }
+
+        step_result = solve_with_steps(eqs)
+        problem_type = detect_type(text, eqs)
+        domain = classify_domain(text)
+
+        result = {
+            "domain": domain,
+            "type": problem_type,
             "ocr_text": raw,
             "normalized": text,
             "parsed": lines,
+            "steps": step_result.get("steps", []),
+            "solution": step_result.get("solution", {}),
+            "parse_errors": parse_errors
         }
 
+        # Lưu vào supabase, nhưng không crash nếu lỗi
+        try:
+            supabase.table("solve_history").insert({
+                "user_id": payload.get("user_id"),
+                "raw_text": raw,
+                "normalized_text": text,
+                "parsed_lines": lines,
+                "problem_type": problem_type,
+                "solution": step_result.get("solution", {}),
+                "parse_errors": parse_errors
+            }).execute()
+        except Exception as e:
+            print("Supabase insert failed:", e)
 
-    domain = classify_domain(text)
-    problem_type = detect_type(text, eqs)
+        return result
 
-    try:
-        step_result = solve_with_steps(eqs)
     except Exception as e:
-        return {
-            "error": "solve_failed",
-            "detail": str(e),
-            "parsed": lines,
-        }
+        traceback.print_exc()
+        return {"error": "Internal server error", "message": str(e)}
 
-    if not step_result:
-        return {
-            "error": "no_solution",
-            "parsed": lines,
-        }
-
-    result = {
-        "domain": domain,
-        "type": problem_type,
-        "ocr_text": raw,
-        "normalized": text,
-        "parsed": lines,
-        "steps": step_result["steps"],
-        "solution": step_result["solution"],
-    }
-
-    supabase.table("solve_history").insert({
-        "user_id": payload.get("user_id"),
-        "raw_text": raw,
-        "normalized_text": text,
-        "parsed_lines": lines,
-        "problem_type": problem_type,
-        "solution": step_result["solution"],
-    }).execute()
-
-    return result
-
+# =====================
+# GET /history
+# =====================
 @app.get("/api/history")
 async def get_history():
-    res = supabase.table("solve_history") \
-        .select("*") \
-        .order("created_at", desc=True) \
-        .limit(50) \
-        .execute()
-    return res.data
-# test
+    try:
+        res = supabase.table("solve_history") \
+            .select("*") \
+            .order("created_at", desc=True) \
+            .limit(50) \
+            .execute()
+        return res.data
+    except Exception as e:
+        traceback.print_exc()
+        return {"error": "Cannot fetch history", "message": str(e)}
