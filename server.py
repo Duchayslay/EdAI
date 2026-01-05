@@ -78,7 +78,7 @@ async def solve_text(payload: dict):
         except:
             pass
 
-    domain = classify_domain(raw)
+    domain = classify_domain(text)
     problem_type = detect_type(text, eqs)
 
     step_result = solve_with_steps(eqs)
