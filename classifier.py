@@ -7,7 +7,7 @@ MODEL_ID = "HoangVanDuc/math-classifier-edai"
 
 _clf = None
 _label_encoder = None
-
+DISABLE_CLASSIFIER = os.environ.get("DISABLE_CLASSIFIER") == "1"
 
 def load_resources():
     global _clf, _label_encoder
@@ -35,14 +35,12 @@ def load_resources():
 
 
 def classify_domain(text: str) -> str:
+    if DISABLE_CLASSIFIER:
+        return "algebra"   # hoặc "unknown"
+
     if _clf is None:
         load_resources()
 
-    pred = _clf(
-        text,
-        truncation=True,
-        max_length=128   # ⬅️ RẤT QUAN TRỌNG
-    )[0]
-
+    pred = _clf(text, truncation=True, max_length=128)[0]
     label_id = int(pred["label"].split("_")[-1])
     return _label_encoder.inverse_transform([label_id])[0]

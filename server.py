@@ -170,8 +170,8 @@ if __name__ == "__main__":
         reload=False
     )
 
-
-@app.on_event("startup")
-def startup_event():
-    from classifier import load_resources
-    load_resources()
+try:
+    domain = classify_domain(text)
+except Exception as e:
+    print("Classifier skipped:", e)
+    domain = "unknown"
