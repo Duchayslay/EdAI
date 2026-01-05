@@ -120,6 +120,10 @@ async def solve_text(payload: dict):
                 "solution": step_result.get("solution", {}),
                 "parse_errors": parse_errors
             }).execute()
+            print("LINES:", lines)
+            print("EQS:", eqs)
+            print("STEP_RESULT:", step_result)
+
         except Exception as e:
             print("Supabase insert failed:", e)
 
