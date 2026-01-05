@@ -3,9 +3,6 @@ uvicorn[standard]
 pillow
 pytesseract
 sympy
-
-transformers
-torch
 supabase
 python-multipart
 pillow

@@ -1,39 +1,21 @@
-from transformers import pipeline
-import pickle
-from huggingface_hub import hf_hub_download
-import torch
-
-MODEL_ID = "HoangVanDuc/math-classifier-edai"
-
-_clf = None
-_label_encoder = None
-
-
-def load_resources():
-    global _clf, _label_encoder
-
-    if _clf is not None:
-        return
-
-    _clf = pipeline(
-        "text-classification",
-        model=MODEL_ID,
-        device=-1  
-    )
-
-    label_path = hf_hub_download(
-        repo_id=MODEL_ID,
-        filename="label_encoder.pkl"
-    )
-
-    with open(label_path, "rb") as f:
-        _label_encoder = pickle.load(f)
-
+import re
 
 def classify_domain(text: str) -> str:
-    if _clf is None:
-        load_resources()
+    t = text.lower()
 
-    pred = _clf(text, truncation=True)[0]
-    label_id = int(pred["label"].split("_")[-1])
-    return _label_encoder.inverse_transform([label_id])[0]
+    if re.search(r"đạo hàm|derivative|d/dx|f'\(", t):
+        return "derivative"
+
+    if re.search(r"tích phân|integral|∫", t):
+        return "integral"
+
+    if re.search(r"phương trình|=|solve|nghiệm|x\s*=", t):
+        return "equation"
+
+    if re.search(r"tam giác|hình|góc|đường tròn|vuông", t):
+        return "geometry"
+
+    if re.search(r"xác suất|probability|thống kê", t):
+        return "probability"
+
+    return "unknown"
