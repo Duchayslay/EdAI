@@ -158,3 +158,8 @@ async def get_version():
         return {"commit": commit.decode().strip()}
     except Exception as e:
         return {"error": str(e)}
+
+from server import solve_text
+import asyncio
+
+asyncio.run(solve_text({"text": "x+2=5"}))
