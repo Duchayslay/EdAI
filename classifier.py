@@ -36,8 +36,8 @@ def load_resources():
 
 
 def classify_domain(text: str) -> str:
-    if DISABLE_CLASSIFIER:
-        return "algebra"   # hoặc "unknown"
+    if os.getenv("DISABLE_CLASSIFIER") == "1":
+        return "algebra"
 
     if _clf is None:
         load_resources()
