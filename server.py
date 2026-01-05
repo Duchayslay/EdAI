@@ -75,6 +75,8 @@ async def solve_text(payload: dict):
         try:
             l, r = line.split("=", 1)
             eqs.append(Eq(sp.sympify(l), sp.sympify(r)))
+        except Exception as e:
+            print("Parse error:", line, e)
 
     if not eqs:
         return {
@@ -83,6 +85,7 @@ async def solve_text(payload: dict):
             "normalized": text,
             "parsed": lines,
         }
+
 
     domain = classify_domain(text)
     problem_type = detect_type(text, eqs)
