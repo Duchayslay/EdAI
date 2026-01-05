@@ -1,5 +1,6 @@
 import re
 import os
+import subprocess
 from fastapi import FastAPI
 import sympy as sp
 from sympy import Eq
@@ -12,11 +13,12 @@ import traceback
 # =====================
 # INIT
 # =====================
-app = FastAPI()
+app = FastAPI(title="EdAI Solver API")
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Supabase client
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 # =====================
 # UTILS
@@ -44,7 +46,6 @@ def clean_ocr_lines(text: str):
     lines = [l.strip() for l in text.split("\n") if l.strip()]
     cleaned = []
     buffer = ""
-
     for line in lines:
         if re.fullmatch(r"\d+", line) and buffer:
             buffer += "=" + line
@@ -57,14 +58,25 @@ def clean_ocr_lines(text: str):
             cleaned.append(line)
         else:
             buffer = line
-
     if buffer:
         cleaned.append(buffer)
     return cleaned
 
 # =====================
-# POST /solve_text
+# ROUTES
 # =====================
+@app.get("/")
+async def root():
+    return {"message": "EdAI Solver API is live"}
+
+@app.get("/api/version")
+async def get_version():
+    try:
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=os.getcwd())
+        return {"commit": commit.decode().strip()}
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/api/solve_text")
 async def solve_text(payload: dict):
     raw = payload.get("text", "").strip()
@@ -109,23 +121,20 @@ async def solve_text(payload: dict):
             "parse_errors": parse_errors
         }
 
-        # Lưu vào supabase, nhưng không crash nếu lỗi
-        try:
-            supabase.table("solve_history").insert({
-                "user_id": payload.get("user_id"),
-                "raw_text": raw,
-                "normalized_text": text,
-                "parsed_lines": lines,
-                "problem_type": problem_type,
-                "solution": step_result.get("solution", {}),
-                "parse_errors": parse_errors
-            }).execute()
-            print("LINES:", lines)
-            print("EQS:", eqs)
-            print("STEP_RESULT:", step_result)
-
-        except Exception as e:
-            print("Supabase insert failed:", e)
+        # Lưu vào Supabase nếu có
+        if supabase:
+            try:
+                supabase.table("solve_history").insert({
+                    "user_id": payload.get("user_id"),
+                    "raw_text": raw,
+                    "normalized_text": text,
+                    "parsed_lines": lines,
+                    "problem_type": problem_type,
+                    "solution": step_result.get("solution", {}),
+                    "parse_errors": parse_errors
+                }).execute()
+            except Exception as e:
+                print("Supabase insert failed:", e)
 
         return result
 
@@ -133,11 +142,10 @@ async def solve_text(payload: dict):
         traceback.print_exc()
         return {"error": "Internal server error", "message": str(e)}
 
-# =====================
-# GET /history
-# =====================
 @app.get("/api/history")
 async def get_history():
+    if not supabase:
+        return {"error": "Supabase not configured"}
     try:
         res = supabase.table("solve_history") \
             .select("*") \
@@ -148,18 +156,11 @@ async def get_history():
     except Exception as e:
         traceback.print_exc()
         return {"error": "Cannot fetch history", "message": str(e)}
-import subprocess
 
-@app.get("/api/version")
-async def get_version():
-    try:
-        # Lấy commit hash hiện tại
-        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=os.getcwd())
-        return {"commit": commit.decode().strip()}
-    except Exception as e:
-        return {"error": str(e)}
+# =====================
+# RUN (optional local)
+# =====================
 if __name__ == "__main__":
     import uvicorn
-
-    # Chạy server bình thường
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=True)
