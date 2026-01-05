@@ -144,3 +144,13 @@ async def get_history():
     except Exception as e:
         traceback.print_exc()
         return {"error": "Cannot fetch history", "message": str(e)}
+import subprocess
+
+@app.get("/api/version")
+async def get_version():
+    try:
+        # Lấy commit hash hiện tại
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=os.getcwd())
+        return {"commit": commit.decode().strip()}
+    except Exception as e:
+        return {"error": str(e)}
