@@ -90,7 +90,20 @@ async def solve_text(payload: dict):
     domain = classify_domain(text)
     problem_type = detect_type(text, eqs)
 
-    step_result = solve_with_steps(eqs)
+    try:
+        step_result = solve_with_steps(eqs)
+    except Exception as e:
+        return {
+            "error": "solve_failed",
+            "detail": str(e),
+            "parsed": lines,
+        }
+
+    if not step_result:
+        return {
+            "error": "no_solution",
+            "parsed": lines,
+        }
 
     result = {
         "domain": domain,
